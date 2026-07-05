@@ -42,7 +42,7 @@ def summarize(transcript : str, source_type : str = "meeting") -> str:
         [
         (
             "system",
-            "You are an expert {label} summarizer. Combine these partial summaries "
+            f"You are an expert {label} summarizer. Combine these partial summaries "
             "into one final professional summary in bullet points.",
         ),
         ("human", "{text}"),
