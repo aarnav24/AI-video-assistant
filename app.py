@@ -475,11 +475,15 @@ if st.session_state.result:
         </div>
     </div>""", unsafe_allow_html=True)
 
-    col1, col2 = st.columns([3, 2], gap="medium")
+    col1, col2 = st.columns([4, 1], gap="medium")
     with col1:
+        sum_title_col, sum_btn_col = st.columns([6, 1])
+        with sum_title_col:
+            st.markdown('<div class="card-title">📋 Summary</div>', unsafe_allow_html=True)
+        with sum_btn_col:
+            st.download_button("⬇️", data=r['summary'], file_name="summary.txt", mime="text/plain", help="Download summary")
         st.markdown(f"""
         <div class="card">
-            <div class="card-title">📋 Summary</div>
             <div class="card-content">{r['summary']}</div>
         </div>""", unsafe_allow_html=True)
     with col2:
