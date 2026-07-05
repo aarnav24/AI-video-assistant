@@ -8,7 +8,7 @@ An end-to-end AI-powered tool that transcribes audio from YouTube videos or loca
 
 - **Audio Ingestion** — Supports YouTube URLs and local audio/video files (MP3, MP4, WAV, M4A, and more)
 - **Transcription** — Fast, accurate transcription via Groq's Whisper large-v3 API
-- **English / Hinglish Support** — Automatically translates Hindi and Hinglish audio to English
+- **Hindi / Hinglish Support** — Automatically translates Hindi and Hinglish audio to English
 - **AI Summarization** — Generates concise bullet-point summaries using Mistral AI via LangChain LCEL
 - **Smart Extraction** — Automatically extracts action items, key decisions, and open questions
 - **RAG Chat** — Chat with your transcript using ChromaDB vector store + FastEmbed embeddings
@@ -27,7 +27,7 @@ An end-to-end AI-powered tool that transcribes audio from YouTube videos or loca
 | Embeddings | FastEmbed (`BAAI/bge-small-en-v1.5`) |
 | Vector Store | ChromaDB |
 | Audio Processing | yt-dlp, pydub, FFmpeg |
-| Language | Python 3.12 |
+| Language | Python 3.10+ |
 
 ---
 
@@ -36,6 +36,9 @@ An end-to-end AI-powered tool that transcribes audio from YouTube videos or loca
 ```
 video_assistant/
 ├── app.py                  # Streamlit UI
+├── main.py                 # CLI entry point
+├── pyproject.toml          # Project metadata & dependencies
+├── uv.lock                 # Locked dependency versions
 ├── requirements.txt
 ├── .env                    # API keys (not committed)
 ├── core/
@@ -106,6 +109,7 @@ YouTube URL / Local File
         ↓
   RAG Chat (Mistral + ChromaDB retriever)
 ```
+
 ---
 
 ## 🔑 Environment Variables
