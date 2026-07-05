@@ -481,7 +481,7 @@ if st.session_state.result:
         with sum_title_col:
             st.markdown('<div class="card-title">📋 Summary</div>', unsafe_allow_html=True)
         with sum_btn_col:
-            st.download_button("⬇️", data=r['summary'], file_name="summary.txt", mime="text/plain", help="Download summary")
+            st.download_button("⬇️", data=r['summary'], file_name="summary.txt", mime="text/plain", help="Download summary", key="download_summary")
         st.markdown(f"""
         <div class="card">
             <div class="card-content">{r['summary']}</div>
