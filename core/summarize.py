@@ -25,7 +25,7 @@ def summarize(transcript : str, source_type : str = "meeting") -> str:
     
     map_prompt = ChatPromptTemplate.from_messages(
         [
-        ("system", "Summarize this portion of a {label} transcript concisely."),
+        ("system", f"Summarize this portion of a {label} transcript concisely."),
         ("human", "{text}"),
     ]
     )
@@ -65,7 +65,7 @@ def generate_title(transcipt : str, source_type : str = "meeting") -> str:
         ChatPromptTemplate.from_messages([
              (
                 "system",
-                "Based on the {label} transcript, generate a short professional {label} title "
+                f"Based on the {label} transcript, generate a short professional {label} title "
                 "(max 8 words). Only return the title, nothing else.",
             ),
             ("human", "{text}"),
