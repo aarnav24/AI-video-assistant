@@ -13,29 +13,64 @@ import yt_dlp
 from pydub import AudioSegment
 import os
 
-DOWNLOAD_DIR = 'downloads'
-os.makedirs(DOWNLOAD_DIR, exist_ok= True)
+
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
+
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": output_path,
-        "no_warnings": True,
+
+        # Better compatibility with YouTube
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/137.0.0.0 Safari/537.36"
+            )
+        },
+
+        # Use different YouTube clients
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "web"]
+            }
+        },
+
+        # Retry failed downloads
+        "retries": 5,
+        "fragment_retries": 5,
+
+        # Useful while debugging
+        "quiet": False,
+        "no_warnings": False,
+
+        # Convert audio to WAV
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
-                "preferredcodec": "wav"
+                "preferredcodec": "wav",
+                "preferredquality": "192",
             }
         ],
-        "quiet": True
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info).replace(".webm", ".wav").replace(".m4a", ".wav")
-        
-    return filename
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+
+            filename = ydl.prepare_filename(info)
+
+            base, _ = os.path.splitext(filename)
+            wav_file = base + ".wav"
+
+            return wav_file
+
+    except Exception as e:
+        raise Exception(f"YouTube download failed: {str(e)}")
 
 def convert_to_wav(input_path: str) -> str:
     """Convert any audio/video file to WAV format and compatible for whisper using pydub"""
