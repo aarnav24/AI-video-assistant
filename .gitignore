@@ -1,0 +1,37 @@
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# ---- Virtual envs ----
+.venv/
+venv/
+env/
+
+# ---- Secrets (real keys live in .env, copy from .env.example) ----
+.env
+.env.*
+!.env.example
+
+# ---- Streamlit ----
+.streamlit/secrets.toml
+
+# ---- Build / IDE ----
+build/
+dist/
+.vscode/
+*.log
+
+# ---- Runtime artefacts ----
+# Downloads from yt-dlp / pydub intermediates
+downloads/
+*.wav
+*.mp3
+*.mp4
+*.m4a
+*.webm
+
+# Chroma persistent vector store 
+vector_db/
