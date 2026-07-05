@@ -21,8 +21,8 @@ env/
 # ---- Build / IDE ----
 build/
 dist/
-.vscode/
 *.log
+.vscode/
 
 # ---- Runtime artefacts ----
 # Downloads from yt-dlp / pydub intermediates
