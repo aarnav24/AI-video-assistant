@@ -1,7 +1,8 @@
 import streamlit as st
 import time
+import os
 from dotenv import load_dotenv
-from utils.audio_processor import process_input
+from utils.audio_processor import process_input, convert_to_wav, chunk_audio
 from core.transcriber import transcribe_all
 from core.summarize import summarize, generate_title
 from core.extractor import extract_action_items, extract_key_decisions, extract_questions
@@ -11,7 +12,7 @@ from core.rag_engine import load_rag_chain, ask_question
 load_dotenv()
 
 st.set_page_config(
-    page_title="AI Video Assistant",
+    page_title="AI Meeting & Video Intelligence Assistant",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -309,10 +310,26 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown('<span class="badge badge-purple">Input</span>', unsafe_allow_html=True)
-    source   = st.text_input("YouTube URL or File Path", placeholder="https://youtube.com/watch?v=... or /path/to/file.mp4")
-    source_type = "youtube" if source.startswith("http") else "meeting"
-    language = st.selectbox("Language", ["english", "hinglish"], index=0)
-    run_btn  = st.button("⚡  Analyse", use_container_width=True)
+
+    input_type = st.radio("Source", ["YouTube URL", "Upload File"], horizontal=True)
+    language   = st.selectbox("Language", ["english", "hinglish"], index=0)
+
+    source          = None
+    uploaded_file   = None
+
+    if input_type == "YouTube URL":
+        url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...")
+        if url.strip():
+            source = url.strip()
+    else:
+        uploaded_file = st.file_uploader(
+            "Upload Audio/Video",
+            type=["mp3", "mp4", "wav", "m4a", "ogg", "flac", "webm", "mkv"],
+            help="Max file size: 500MB"
+        )
+        st.caption("Supports MP3, MP4, WAV, M4A, OGG, FLAC, WEBM, MKV")
+
+    run_btn = st.button("⚡  Analyse", use_container_width=True)
 
     if st.session_state.pipeline_started:
         st.markdown("---")
@@ -349,76 +366,102 @@ st.markdown("---")
 
 # ── Run Pipeline ─────────────────────────────────────────────────────────────────
 if run_btn:
-    if not source.strip():
-        st.error("Please enter a YouTube URL or file path.")
-    else:
-        st.session_state.result           = None
-        st.session_state.chat_history     = []
-        st.session_state.pipeline_done    = False
-        st.session_state.pipeline_started = True
+    # ── Validate input ──
+    if input_type == "YouTube URL" and not source:
+        st.error("Please enter a YouTube URL.")
+        st.stop()
+    elif input_type == "Upload File" and uploaded_file is None:
+        st.error("Please upload an audio or video file.")
+        st.stop()
 
+    st.session_state.result           = None
+    st.session_state.chat_history     = []
+    st.session_state.pipeline_done    = False
+    st.session_state.pipeline_started = True
+
+    for key, _, _ in STEPS:
+        st.session_state[f"step_{key}"] = "pending"
+
+    progress_placeholder = st.empty()
+    progress_placeholder.markdown("""
+    <div class="pipeline-banner">
+        <span class="spin-gear">⚙️</span>
+        <span>Pipeline running… check sidebar for live status</span>
+    </div>""", unsafe_allow_html=True)
+
+    try:
+        mark("audio", "active")
+
+        if input_type == "Upload File":
+            # Save uploaded file to downloads/ then process
+            os.makedirs("downloads", exist_ok=True)
+            file_path = os.path.join("downloads", uploaded_file.name)
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.read())
+            chunks = chunk_audio(convert_to_wav(file_path))
+        else:
+            # YouTube URL — show friendly error if blocked
+            try:
+                chunks = process_input(source)
+            except Exception as e:
+                if "403" in str(e) or "Forbidden" in str(e):
+                    progress_placeholder.error(
+                        "❌ YouTube download is unavailable on the hosted version due to server restrictions. "
+                        "Please upload an audio/video file directly."
+                    )
+                    st.stop()
+                raise e
+
+        mark("audio", "done")
+
+        mark("transcript", "active")
+        source_type = "youtube" if input_type == "YouTube URL" else "meeting"
+        transcript  = transcribe_all(chunks, "en" if language == "english" else "hi")
+        mark("transcript", "done")
+
+        mark("title", "active")
+        title = generate_title(transcript, source_type=source_type)
+        mark("title", "done")
+
+        mark("summary", "active")
+        summary_text = summarize(transcript, source_type=source_type)
+        mark("summary", "done")
+
+        mark("extract", "active")
+        action_items = extract_action_items(summary_text)
+        decisions    = extract_key_decisions(summary_text)
+        questions    = extract_questions(summary_text)
+        mark("extract", "done")
+
+        mark("vectorstore", "active")
+        build_vector_store(transcript)
+        mark("vectorstore", "done")
+
+        mark("rag", "active")
+        rag_chain = load_rag_chain()
+        mark("rag", "done")
+
+        st.session_state.result = {
+            "title":          title,
+            "transcript":     transcript,
+            "summary":        summary_text,
+            "action_items":   action_items,
+            "key_decisions":  decisions,
+            "open_questions": questions,
+            "rag_chain":      rag_chain,
+        }
+        st.session_state.pipeline_done = True
+        progress_placeholder.success("✅ Analysis complete!")
+        time.sleep(0.8)
+        progress_placeholder.empty()
+        st.rerun()
+
+    except Exception as e:
         for key, _, _ in STEPS:
-            st.session_state[f"step_{key}"] = "pending"
-
-        progress_placeholder = st.empty()
-        progress_placeholder.markdown("""
-        <div class="pipeline-banner">
-            <span class="spin-gear">⚙️</span>
-            <span>Pipeline running… check sidebar for live status</span>
-        </div>""", unsafe_allow_html=True)
-
-        try:
-            mark("audio", "active")
-            chunks = process_input(source)
-            mark("audio", "done")
-
-            mark("transcript", "active")
-            transcript = transcribe_all(chunks, "en" if language == "english" else "hi")
-            mark("transcript", "done")
-
-            mark("title", "active")
-            title = generate_title(transcript, source_type=source_type)
-            mark("title", "done")
-
-            mark("summary", "active")
-            summary_text = summarize(transcript, source_type=source_type)
-            mark("summary", "done")
-
-            mark("extract", "active")
-            action_items = extract_action_items(summary_text)
-            decisions    = extract_key_decisions(summary_text)
-            questions    = extract_questions(summary_text)
-            mark("extract", "done")
-
-            mark("vectorstore", "active")
-            build_vector_store(transcript)
-            mark("vectorstore", "done")
-
-            mark("rag", "active")
-            rag_chain = load_rag_chain()
-            mark("rag", "done")
-
-            st.session_state.result = {
-                "title":          title,
-                "transcript":     transcript,
-                "summary":        summary_text,
-                "action_items":   action_items,
-                "key_decisions":  decisions,
-                "open_questions": questions,
-                "rag_chain":      rag_chain,
-            }
-            st.session_state.pipeline_done = True
-            progress_placeholder.success("✅ Analysis complete!")
-            time.sleep(0.8)
-            progress_placeholder.empty()
-            st.rerun()
-
-        except Exception as e:
-            for key, _, _ in STEPS:
-                if st.session_state.get(f"step_{key}") == "active":
-                    st.session_state[f"step_{key}"] = "pending"
-                    mark(key, "pending")
-            progress_placeholder.error(f"❌ Error: {e}")
+            if st.session_state.get(f"step_{key}") == "active":
+                st.session_state[f"step_{key}"] = "pending"
+                mark(key, "pending")
+        progress_placeholder.error(f"❌ Error: {e}")
 
 # ── Results ───────────────────────────────────────────────────────────────────────
 if st.session_state.result:
@@ -465,7 +508,7 @@ if st.session_state.result:
         </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown('<div style="font-family:\'Syne\',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:1rem">💬 Chat with your Meeting/Video</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-family:\'Syne\',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:1rem">💬 Chat with your Meeting</div>', unsafe_allow_html=True)
 
     if st.session_state.chat_history:
         chat_html = '<div class="chat-container">'
@@ -517,7 +560,7 @@ else:
             Ready to Analyse
         </div>
         <div style="color:var(--text-muted);font-size:0.85rem;max-width:380px;line-height:1.7">
-            Paste a YouTube URL or local file path in the sidebar, choose your language, and hit <strong>Analyse</strong> to get started.
+            Upload an audio/video file or paste a YouTube URL in the sidebar, choose your language, and hit <strong>Analyse</strong> to get started.
         </div>
         <div style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap;justify-content:center">
             <span class="badge badge-purple">Transcription</span>
