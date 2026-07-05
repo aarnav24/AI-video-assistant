@@ -5,6 +5,12 @@ import os
 DOWNLOAD_DIR = 'downloads'
 os.makedirs(DOWNLOAD_DIR, exist_ok= True)
 
+import sys
+if sys.version_info >= (3, 13):
+    import audioop_lts as audioop
+    sys.modules['audioop'] = audioop
+    sys.modules['pyaudioop'] = audioop
+
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
     ydl_opts = {
