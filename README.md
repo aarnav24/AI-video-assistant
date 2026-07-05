@@ -1,4 +1,4 @@
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)]([https://your-app-url.streamlit.app](https://ai-video-assistant-jktbgycrdebxgblixnvu4h.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-video-assistant-jktbgycrdebxgblixnvu4h.streamlit.app/)
 # 🎬 AI Meeting & Video Intelligence Assistant
 
 An end-to-end AI-powered tool that transcribes audio from YouTube videos or local files, summarizes the content, extracts action items and key decisions, and lets you chat with the transcript using a RAG pipeline.
